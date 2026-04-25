@@ -1,4 +1,6 @@
 import streamlit as st
+import plotly.graph_objects as go
+import networkx as nx
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -8,7 +10,7 @@ st.set_page_config(
 )
 
 st.title("Dashboard Fintech XAI - UNALM 🏦")
-st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica**")
+st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica (11 Módulos)**")
 
 # 2. Conexión Prolog (Con manejo de errores robusto)
 prolog_ready = False
@@ -22,11 +24,6 @@ except ImportError:
     st.error("Librería PySwip no encontrada. Ejecuta `pip install pyswip`.")
 except Exception as e:
     st.error(f"Error al inicializar el Motor Prolog: {e}")
-    st.warning("""
-    **Solución posible:** PySwip requiere que de SWI-Prolog esté instalado y añadido al **PATH** de Windows.
-    Si acabas de instalar SWI-Prolog, puede que necesites cerrar la terminal y/o el editor e iniciarlos nuevamente 
-    para que se refresquen las variables de entorno.
-    """)
 
 if prolog_ready:
     # 3. Interfaz de Usuario (UI) - Barra Lateral
@@ -42,7 +39,7 @@ if prolog_ready:
     st.header(f"Expediente Modular: `{cliente_seleccionado}`")
     
     # === TABS ===
-    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Riesgo", "⚖️ Auditoría y Compliance SBS"])
+    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Fraude", "⚖️ Auditoría y Compliance SBS"])
     
     # --- FUNCIONES DE ASISTENCIA PYSWIP ---
     def q_string(query_str, var_name):
@@ -68,23 +65,47 @@ if prolog_ready:
         meses = q_string(f"antiguedad_laboral({cliente_seleccionado}, Meses)", "Meses")
         nivel_billetera = q_string(f"billetera_digital({cliente_seleccionado}, Nivel)", "Nivel")
         
+        # Nuevos Módulos
+        tiempo_llenado = q_string(f"tiempo_llenado({cliente_seleccionado}, T)", "T")
+        residencia = q_string(f"residencia({cliente_seleccionado}, R)", "R")
+        imei = q_string(f"dispositivo_imei({cliente_seleccionado}, I)", "I")
+        suma_cuotas = q_string(f"suma_cuotas_mensuales({cliente_seleccionado}, S)", "S")
+        antig_domicilio = q_string(f"antiguedad_domicilio({cliente_seleccionado}, A)", "A")
+        sector = q_string(f"sector_laboral({cliente_seleccionado}, S)", "S")
+        creditos_activos = q_string(f"creditos_activos({cliente_seleccionado}, C)", "C")
+        consultas = q_string(f"consultas_bancarias_15dias({cliente_seleccionado}, C)", "C")
+        
+        try:
+            dsr = (float(suma_cuotas) / float(monto_ingreso)) * 100 if float(monto_ingreso) > 0 else 0
+            dsr_str = f"{dsr:.1f}%"
+        except:
+            dsr_str = "N/A"
+            
         # Renderizar en Columnas
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("Ubicación IP", str(pais_ip).capitalize())
+            st.metric("Residencia Declarada", str(residencia).capitalize())
+            st.metric("Tiempo de Llenado", f"{tiempo_llenado}s")
             st.metric("Ingresos Mensuales", f"S/. {monto_ingreso}")
+            st.metric("Carga Financiera (DSR)", dsr_str)
         with col2:
+            st.metric("Dispositivo IMEI", imei)
             st.metric("Intentos Login Inusuales", intentos)
+            st.metric("Sector Laboral", str(sector).capitalize())
             st.metric("Antigüedad Laboral", f"{meses} meses")
+            st.metric("Antigüedad Domiciliaria", f"{antig_domicilio} meses")
         with col3:
             st.metric("Pago de Servicios", str(estado_pago).capitalize())
             st.metric("Adopción Billetera Digital", str(nivel_billetera).capitalize())
+            st.metric("Créditos Activos", creditos_activos)
+            st.metric("Consultas (15 días)", consultas)
             
         st.divider()
 
         st.subheader("Motor de Inferencia Simbólica (Onboarding XAI)")
         if st.button("⚖️ Evaluar Riesgo (Onboarding)", type="primary", use_container_width=True):
-            with st.spinner("El motor lógico está analizando..."):
+            with st.spinner("El motor lógico está analizando 11 módulos de riesgo..."):
                  resultado_str = q_string(f"dictamen_final({cliente_seleccionado}, Resultado)", "Resultado")
                  
                  if "DENEGADO" in resultado_str or "RECHAZADO" in resultado_str:
@@ -102,16 +123,67 @@ if prolog_ready:
     # ==========================================
     with tab2:
         st.subheader("Búsqueda de Grafos (Detección AML)")
-        st.markdown("Prolog recorrerá recursivamente las transacciones buscando posibles ciclos o triangulaciones de lavado.")
+        st.markdown("Prolog recorrerá recursivamente las transacciones buscando posibles ciclos o triangulaciones de lavado, **aplicando lógica difusa para tolerar comisiones de testaferros (mulas)**.")
         
+        margen_tolerancia = st.slider("Tolerancia de Comisión de Mula (%)", min_value=0, max_value=20, value=10, step=1, help="Porcentaje de merma que el motor AML aceptará al buscar retornos de dinero.")
+        tolerancia_decimal = margen_tolerancia / 100.0
+
         if st.button("🔍 Escanear Red Transaccional", key="btn_aml"):
-            resultado_aml = q_string(f"alerta_aml({cliente_seleccionado}, Motivo)", "Motivo")
+            resultado_aml = q_string(f"alerta_aml({cliente_seleccionado}, {tolerancia_decimal}, Motivo)", "Motivo")
             if "LAVADO" in resultado_aml:
                 st.error(f"### 🚨 ALERTA CRÍTICA: {resultado_aml}")
-                st.markdown("> **Nota de Auditoría XAI**: Triangulación circular de 3 saltos detectada superior a S/10,000. Revisa la consola original para ver la traza exacta.")
+                st.markdown(f"> **Nota de Auditoría XAI**: Triangulación detectada considerando un margen del {margen_tolerancia}%. Revisa la consola para ver la traza exacta.")
+                
+                # Intentar graficar la red
+                try:
+                    q_nodos = list(prolog.query(f"traza_aml_nodos({cliente_seleccionado}, {tolerancia_decimal}, B, C, M1, M2, M3)"))
+                    if q_nodos:
+                        nodo_B = q_nodos[0]["B"]
+                        if isinstance(nodo_B, bytes): nodo_B = nodo_B.decode('utf-8', 'ignore')
+                        nodo_C = q_nodos[0]["C"]
+                        if isinstance(nodo_C, bytes): nodo_C = nodo_C.decode('utf-8', 'ignore')
+                        M1 = q_nodos[0]["M1"]
+                        M2 = q_nodos[0]["M2"]
+                        M3 = q_nodos[0]["M3"]
+                        
+                        st.markdown("#### 🕸️ Visualización de Red Ilícita")
+                        
+                        G = nx.DiGraph()
+                        G.add_edge(cliente_seleccionado, nodo_B, weight=M1)
+                        G.add_edge(nodo_B, nodo_C, weight=M2)
+                        G.add_edge(nodo_C, cliente_seleccionado, weight=M3)
+                        
+                        pos = nx.spring_layout(G)
+                        edge_x, edge_y = [], []
+                        for edge in G.edges():
+                            x0, y0 = pos[edge[0]]
+                            x1, y1 = pos[edge[1]]
+                            edge_x.extend([x0, x1, None])
+                            edge_y.extend([y0, y1, None])
+                            
+                        edge_trace = go.Scatter(x=edge_x, y=edge_y, line=dict(width=3, color='red'), mode='lines')
+                        node_x, node_y, text_nodes = [], [], []
+                        for node in G.nodes():
+                            x, y = pos[node]
+                            node_x.append(x)
+                            node_y.append(y)
+                            text_nodes.append(str(node))
+                            
+                        node_trace = go.Scatter(x=node_x, y=node_y, mode='markers+text', text=text_nodes, textposition="bottom center",
+                                                marker=dict(color='darkred', size=40, line=dict(width=2, color='white')))
+                        
+                        fig = go.Figure(data=[edge_trace, node_trace],
+                                     layout=go.Layout(showlegend=False, hovermode='closest', margin=dict(b=0,l=0,r=0,t=0),
+                                                      xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                                      yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                                                      height=400))
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                except Exception as e:
+                    st.warning(f"No se pudo generar el grafo visual: {e}")
             else:
                 st.success(f"### ✅ {resultado_aml}")
-                st.markdown("La red transaccional del cliente no muestra triangulaciones ilegales aparentes.")
+                st.markdown("La red transaccional del cliente no muestra triangulaciones ilegales aparentes con esta tolerancia.")
 
     # ==========================================
     # TAB 3: AUDITORÍA Y COMPLIANCE SBS
@@ -120,18 +192,20 @@ if prolog_ready:
         st.subheader("Evaluación Regulatoria")
         st.markdown("Analizando ratios financieros contra la normativa de la SBS.")
         
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         patrimonio = q_string(f"patrimonio({cliente_seleccionado}, P)", "P")
         deuda = q_string(f"deuda_total({cliente_seleccionado}, D)", "D")
+        tipo_patrimonio = q_string(f"tipo_patrimonio({cliente_seleccionado}, T)", "T")
         
         col1.metric("Patrimonio Neto", f"S/. {patrimonio}")
-        col2.metric("Deuda Total", f"S/. {deuda}")
+        col2.metric("Tipo de Patrimonio", str(tipo_patrimonio).capitalize())
+        col3.metric("Deuda Total", f"S/. {deuda}")
         
         if st.button("⚖️ Ejecutar Compliance", key="btn_compliance"):
             resultado_sbs = q_string(f"intervencion_sbs({cliente_seleccionado}, Estado)", "Estado")
             if "RIESGO" in resultado_sbs:
                 st.error(f"### 🛑 RECHAZADO: {resultado_sbs}")
-                st.markdown("> **Alerta**: El cliente tiene una Deuda que supera 3 veces su Patrimonio (Insolvencia Técnica).")
+                st.markdown(f"> **Alerta**: El cliente tiene una Deuda que supera el límite permitido para su tipo de patrimonio ({tipo_patrimonio}).")
             else:
                 st.success(f"### ✅ {resultado_sbs}")
                 
