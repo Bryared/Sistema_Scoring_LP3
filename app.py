@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 st.title("Dashboard Fintech XAI - UNALM 🏦")
-st.markdown("Sistema Experto de Onboarding Dual mediante **IA Neuro-Simbólica**")
+st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica**")
 
 # 2. Conexión Prolog (Con manejo de errores robusto)
 prolog_ready = False
@@ -37,80 +37,114 @@ if prolog_ready:
     cliente_seleccionado = st.sidebar.selectbox("Seleccionar ID de Cliente:", lista_clientes)
     
     st.sidebar.divider()
-    st.sidebar.info("Este dashboard extrae métricas usando **Pyswip** y evalúa automáticamente en base a reglas del conocimiento lógico para explicar la rentabilidad/riesgo.")
+    st.sidebar.info("Este dashboard extrae métricas usando **Pyswip** y evalúa automáticamente en base a reglas del conocimiento lógico para explicar la rentabilidad/riesgo, auditorías y compliance.")
 
-    st.header(f"Expediente del Cliente: `{cliente_seleccionado}`")
+    st.header(f"Expediente Modular: `{cliente_seleccionado}`")
     
-    # 4. Visualización de Datos (Consultas a Prolog)
-    try:
-        # Pyswip retorna un Generator, lo pasamos a list() y extraemos el primer dicccionario
-        q_ingresos = list(prolog.query(f"ingresos({cliente_seleccionado}, Monto)"))
-        monto_ingreso = q_ingresos[0]["Monto"] if q_ingresos else "N/A"
-        
-        q_ip = list(prolog.query(f"ubicacion_ip({cliente_seleccionado}, Pais)"))
-        pais_ip = q_ip[0]["Pais"] if q_ip else "N/A"
-        
-        q_intentos = list(prolog.query(f"intentos_login({cliente_seleccionado}, Intentos)"))
-        intentos = q_intentos[0]["Intentos"] if q_intentos else "N/A"
-        
-        q_pago = list(prolog.query(f"pago_servicios({cliente_seleccionado}, Estado)"))
-        # Pyswip puede devolver Atoms como objetos o encoded bytes, utilizamos decode/str
-        estado_pago = str(q_pago[0]["Estado"]) if q_pago else "N/A"
-        if isinstance(q_pago[0]["Estado"], bytes): estado_pago = q_pago[0]["Estado"].decode()
-        
-        q_antiguedad = list(prolog.query(f"antiguedad_laboral({cliente_seleccionado}, Meses)"))
-        meses = q_antiguedad[0]["Meses"] if q_antiguedad else "N/A"
-        
-        q_billetera = list(prolog.query(f"billetera_digital({cliente_seleccionado}, Nivel)"))
-        nivel_billetera = str(q_billetera[0]["Nivel"]) if q_billetera else "N/A"
-        if isinstance(q_billetera[0]["Nivel"], bytes): nivel_billetera = q_billetera[0]["Nivel"].decode()
-        
+    # === TABS ===
+    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Riesgo", "⚖️ Auditoría y Compliance SBS"])
+    
+    # --- FUNCIONES DE ASISTENCIA PYSWIP ---
+    def q_string(query_str, var_name):
+        try:
+            q = list(prolog.query(query_str))
+            if not q: return "N/A"
+            val = q[0][var_name]
+            if isinstance(val, bytes): return val.decode('utf-8', 'ignore')
+            return str(val)
+        except Exception:
+            return "Error SQL/Prolog"
+
+    # ==========================================
+    # TAB 1: ONBOARDING Y CREDIT SCORING
+    # ==========================================
+    with tab1:
         st.subheader("Datos Capturados (Variables de Estado)")
+        # Extracción de datos básicos
+        monto_ingreso = q_string(f"ingresos({cliente_seleccionado}, Monto)", "Monto")
+        pais_ip = q_string(f"ubicacion_ip({cliente_seleccionado}, Pais)", "Pais")
+        intentos = q_string(f"intentos_login({cliente_seleccionado}, Intentos)", "Intentos")
+        estado_pago = q_string(f"pago_servicios({cliente_seleccionado}, Estado)", "Estado")
+        meses = q_string(f"antiguedad_laboral({cliente_seleccionado}, Meses)", "Meses")
+        nivel_billetera = q_string(f"billetera_digital({cliente_seleccionado}, Nivel)", "Nivel")
         
         # Renderizar en Columnas
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Ubicación IP", pais_ip.capitalize())
+            st.metric("Ubicación IP", str(pais_ip).capitalize())
             st.metric("Ingresos Mensuales", f"S/. {monto_ingreso}")
         with col2:
             st.metric("Intentos Login Inusuales", intentos)
             st.metric("Antigüedad Laboral", f"{meses} meses")
         with col3:
-            st.metric("Pago de Servicios", estado_pago.capitalize())
-            st.metric("Adopción Billetera Digital", nivel_billetera.capitalize())
+            st.metric("Pago de Servicios", str(estado_pago).capitalize())
+            st.metric("Adopción Billetera Digital", str(nivel_billetera).capitalize())
             
         st.divider()
 
-        # 5. Ejecución del Motor (Output)
-        st.subheader("Motor de Inferencia Simbólica (XAI)")
-        st.markdown("La tecnología inferencial validará los riesgos transaccionales y crediticios en tiempo real.")
-        
-        # Botón gigante
+        st.subheader("Motor de Inferencia Simbólica (Onboarding XAI)")
         if st.button("⚖️ Evaluar Riesgo (Onboarding)", type="primary", use_container_width=True):
-            with st.spinner("El motor lógico está analizando las ramificaciones algorítmicas..."):
+            with st.spinner("El motor lógico está analizando..."):
+                 resultado_str = q_string(f"dictamen_final({cliente_seleccionado}, Resultado)", "Resultado")
                  
-                 # Consultar la regla maestra (dictamen_final/2)
-                 query_result = list(prolog.query(f"dictamen_final({cliente_seleccionado}, Resultado)"))
-                 
-                 if query_result:
-                     # Parsear del Atom a string
-                     resultado_atom = query_result[0]["Resultado"]
-                     resultado_str = str(resultado_atom)
-                     if isinstance(resultado_atom, bytes): 
-                         resultado_str = resultado_atom.decode()
-                         
-                     # Lógica de colores según resultado determinista
-                     if "DENEGADO" in resultado_str or "RECHAZADO" in resultado_str:
-                         st.error(f"### 🛑 {resultado_str}")
-                         st.markdown("> **Nota XAI:** Verifique en consola para leer el árbol de trazabilidad. El sistema bloqueó transacciones inseguras para el perfil financiero.")
-                     elif "APROBADO" in resultado_str:
-                         st.success(f"### ✅ {resultado_str}")
-                         st.markdown("> **Nota XAI:** Verifique en consola para leer el árbol de trazabilidad. El cliente representa rentabilidad positiva dentro de márgenes de adopción y fallback.")
-                     else:
-                         st.warning(f"### ⚠️ {resultado_str}")
-                         st.markdown("> **Nota XAI:** Verifique en consola para leer el árbol de trazabilidad. El cliente requiere gestión de analistas para mitigar incertidumbres operativas o grises numéricos.")
+                 if "DENEGADO" in resultado_str or "RECHAZADO" in resultado_str:
+                     st.error(f"### 🛑 {resultado_str}")
+                 elif "APROBADO" in resultado_str:
+                     st.success(f"### ✅ {resultado_str}")
+                 elif resultado_str == "Error SQL/Prolog" or resultado_str == "N/A":
+                     st.warning("El motor no encontró un predicado válido para este caso.")
                  else:
-                     st.warning("El motor no encontró un predicado válido para este caso. Revisa la base de conocimiento.")
-                     
-    except Exception as query_error:
-        st.error(f"Error realizando consultas/inferencias sobre Prolog. Detalle técnico: `{query_error}`")
+                     st.warning(f"### ⚠️ {resultado_str}")
+                 st.info("ℹ️ **Explicabilidad (XAI)**: Revisa tu consola original para ver el Árbol de Trazabilidad generado por Prolog.")
+    
+    # ==========================================
+    # TAB 2: PREVENCIÓN DE LAVADO DE ACTIVOS (AML)
+    # ==========================================
+    with tab2:
+        st.subheader("Búsqueda de Grafos (Detección AML)")
+        st.markdown("Prolog recorrerá recursivamente las transacciones buscando posibles ciclos o triangulaciones de lavado.")
+        
+        if st.button("🔍 Escanear Red Transaccional", key="btn_aml"):
+            resultado_aml = q_string(f"alerta_aml({cliente_seleccionado}, Motivo)", "Motivo")
+            if "LAVADO" in resultado_aml:
+                st.error(f"### 🚨 ALERTA CRÍTICA: {resultado_aml}")
+                st.markdown("> **Nota de Auditoría XAI**: Triangulación circular de 3 saltos detectada superior a S/10,000. Revisa la consola original para ver la traza exacta.")
+            else:
+                st.success(f"### ✅ {resultado_aml}")
+                st.markdown("La red transaccional del cliente no muestra triangulaciones ilegales aparentes.")
+
+    # ==========================================
+    # TAB 3: AUDITORÍA Y COMPLIANCE SBS
+    # ==========================================
+    with tab3:
+        st.subheader("Evaluación Regulatoria")
+        st.markdown("Analizando ratios financieros contra la normativa de la SBS.")
+        
+        col1, col2 = st.columns(2)
+        patrimonio = q_string(f"patrimonio({cliente_seleccionado}, P)", "P")
+        deuda = q_string(f"deuda_total({cliente_seleccionado}, D)", "D")
+        
+        col1.metric("Patrimonio Neto", f"S/. {patrimonio}")
+        col2.metric("Deuda Total", f"S/. {deuda}")
+        
+        if st.button("⚖️ Ejecutar Compliance", key="btn_compliance"):
+            resultado_sbs = q_string(f"intervencion_sbs({cliente_seleccionado}, Estado)", "Estado")
+            if "RIESGO" in resultado_sbs:
+                st.error(f"### 🛑 RECHAZADO: {resultado_sbs}")
+                st.markdown("> **Alerta**: El cliente tiene una Deuda que supera 3 veces su Patrimonio (Insolvencia Técnica).")
+            else:
+                st.success(f"### ✅ {resultado_sbs}")
+                
+            st.divider()
+            
+            # Sub-sección: Auditoría de Cobros (Contratos)
+            st.markdown("#### 🔎 Auditoría de Smart Contracts Lógicos")
+            auditoria = q_string(f"auditoria_cobros({cliente_seleccionado}, Alerta)", "Alerta")
+            
+            if "COBRO INDEBIDO" in auditoria:
+                st.warning(f"### ⚠️ {auditoria}")
+                tasa_acordada = q_string(f"tasa_acordada({cliente_seleccionado}, TA)", "TA")
+                tasa_cobrada = q_string(f"tasa_cobrada({cliente_seleccionado}, TC)", "TC")
+                st.error(f"Inconsistencia en Tasas: Se acordó {tasa_acordada} pero el sistema cobró {tasa_cobrada}.")
+            else:
+                st.info(f"### ✅ {auditoria} (Tasa Acordada = Tasa Cobrada)")

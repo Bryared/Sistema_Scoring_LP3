@@ -14,22 +14,19 @@
 %% ==========================================
 
 %% Regla 1: Base de Conocimiento de riesgo geográfico.
-%% Define los países que estadísticamente representan alto riesgo de ciberataque.
 pais_riesgo(rusia).
 pais_riesgo(china).
 
 %% Regla 2: Filtro Antifraude por Ubicación IP.
-%% Se evalúa si el país de conexión del cliente pertenece a la base de riesgo.
 es_fraude(Id) :- 
-    ubicacion_ip(Id, Pais),                %% Predicado que obtiene el país de conexión.
-    pais_riesgo(Pais),                     %% Se unifica si el país pertenece a lista negra.
+    ubicacion_ip(Id, Pais),                
+    pais_riesgo(Pais),                     
     format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Conexion IP desde pais de altisimo riesgo (~w).~n', [Id, Pais]).
 
 %% Regla 3: Filtro Antifraude por Fuerza Bruta.
-%% Bloquea operaciones que exceden el límite logístico de reintentos permitidos.
 es_fraude(Id) :- 
-    intentos_login(Id, Intentos),          %% Predicado que obtiene los reintentos
-    Intentos > 3,                          %% Operador lógico mayor estricto a 3 intentos.
+    intentos_login(Id, Intentos),          
+    Intentos > 3,                          
     format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Exceso de intentos de login (~w). Posible fuerza bruta.~n', [Id, Intentos]).
 
 %% ==========================================
@@ -37,80 +34,118 @@ es_fraude(Id) :-
 %% ==========================================
 
 %% Regla 4: Perfil de Capacidad de Pago Sólida.
-%% Verifica que se cumplan condiciones óptimas económicas (ingreso y antigüedad).
 capacidad_solida(Id) :-
-    ingresos(Id, Monto),                   %% Obtenemos el ingreso del usuario en la variable Monto.
-    Monto > 2000,                          %% El ingreso debe ser mayor al umbral de seguridad de 2000 soles.
-    antiguedad_laboral(Id, Meses),         %% Obtenemos su arraigo laboral.
-    Meses > 12.                            %% Debe superar al menos un año de permanencia.
+    ingresos(Id, Monto),                   
+    Monto > 2000,                          
+    antiguedad_laboral(Id, Meses),         
+    Meses > 12.                            
 
 %% Regla 5: Historial Impecable de Servicios.
-%% Asegura que no tenga manchas en pagos menores.
 historial_impecable(Id) :-
-    pago_servicios(Id, puntual).           %% Valor atómico explícito 'puntual'.
+    pago_servicios(Id, puntual).           
 
 %% Regla 6: Historial Deficiente (Riesgo Crediticio).
-%% Busca un perfil que represente pérdida y deudas activas.
 historial_deficiente(Id) :-
-    pago_servicios(Id, moroso).            %% Valor atómico explícito 'moroso'.
+    pago_servicios(Id, moroso).            
 
 %% Regla 7: Fallback o Cobertura Neuro-Simbólica.
-%% Identifica la inclusión mediante adopción tecnológica y datos alternativos.
 respaldo_digital_fuerte(Id) :-
-    billetera_digital(Id, alto).           %% Requiere uso intensivo ('alto') de la billetera digital.
+    billetera_digital(Id, alto).           
 
 %% ==========================================
 %% MÓDULO 3: DECISIÓN FINAL Y XAI (EXPLICABILIDAD)
 %% ==========================================
 
-%% Regla 8: Reclamo inmediato por Fraude (Restricción dura).
-%% Típicamente es el primer nodo del árbol lógico a evaluar en onboarding.
 dictamen_final(Id, 'DENEGADO POR SEGURIDAD') :-
-    es_fraude(Id),                         %% Invocamos las reglas de fraude.
-    !,                                     %% CUT (!): Poda el árbol, si es fraude no buscamos más reglas.
+    es_fraude(Id),                         
+    !,                                     
     format('[XAI] DICTAMEN FINAL: Onboarding Cancelado para ~w por Riesgo de Fraude.~n', [Id]).
 
-%% Regla 9: Aprobación Premium (Scoring perfecto).
-%% Cliente con excelentes KPIs de solvencia y puntualidad probada.
 dictamen_final(Id, 'APROBADO PREMIUM') :-
-    capacidad_solida(Id),                  %% Validación de solvencia (Regla 4).
-    historial_impecable(Id),               %% Validación de historia de pago (Regla 5).
-    !,                                     %% CUT (!): Se corta porque ya categorizó primariamente.
+    capacidad_solida(Id),                  
+    historial_impecable(Id),               
+    !,                                     
     format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso para ~w (Nivel Premium).~n', [Id]),
     format('[XAI] RAZONAMIENTO: Alta solvencia y arraigo laboral combinada con comportamiento puntual.~n').
 
-%% Regla 10: Rechazo por Scoring Crediticio.
-%% Un moroso no puede ser calificado para un onboarding financiero sin avales extra.
 dictamen_final(Id, 'DENEGADO POR SCORING') :-
-    historial_deficiente(Id),              %% Aplicación estricta de la regla de deficiencia.
-    !,                                     %% CUT (!): Rechazado automáticamente, fin de evaluación.
+    historial_deficiente(Id),              
+    !,                                     
     format('~n[XAI] DICTAMEN FINAL: Onboarding Rechazado para ~w por Riesgo Crediticio.~n', [Id]),
     format('[XAI] RAZONAMIENTO: El motor logico detecto comportamiento activo MOROSO en pagos de servicios.~n').
 
-%% Regla 11: Aprobación Estándar (Fallback para Invisibles).
-%% Compensación neuronal de variables mediante lógica difusa-fallback.
 dictamen_final(Id, 'APROBADO ESTANDAR (FALLBACK)') :-
-    ingresos(Id, Monto), Monto >= 800,     %% Primer umbral: ingreso de al menos 800 soles.
-    historial_impecable(Id),               %% Segundo umbral: debe ser un perfil puntual sí o sí.
-    respaldo_digital_fuerte(Id),           %% Condición X: Su historial digital compensatorio es alto.
-    !,                                     %% CUT (!): Califica, terminamos de inferir por aquí.
+    ingresos(Id, Monto), Monto >= 800,     
+    historial_impecable(Id),               
+    respaldo_digital_fuerte(Id),           
+    !,                                     
     format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso para ~w (Nivel Estandar).~n', [Id]),
     format('[XAI] RAZONAMIENTO: Uso de Fallback. Ingreso modesto de S/.~w mitigado por pago de servicios puntual y alto nivel de Billetera Digital.~n', [Monto]).
 
-%% Regla 12: Evaluación Manual (Incertidumbre - Zona Gris).
-%% Todo lo que escape a las reglas deterministas anteriores se lanza a revisión humana.
 dictamen_final(Id, 'REQUIERE EVALUACION MANUAL') :-
-    ingresos(Id, Monto),                   %% Imprimimos las variables capturadas para explicarle al auditor.
-    pago_servicios(Id, Estado),            %% Estado actual.
-    billetera_digital(Id, Nivel),          %% Uso digital restante.
+    ingresos(Id, Monto),                   
+    pago_servicios(Id, Estado),            
+    billetera_digital(Id, Nivel),          
     format('~n[XAI] DICTAMEN FINAL: Cliente ~w derivado para Evaluacion Manual por Incertidumbre.~n', [Id]),
     format('[XAI] RAZONAMIENTO: Variables difusas. Ingresos: S/.~w | Pagos: ~w | Nivel Billetera: ~w. No encaja en limites deterministas.~n', [Monto, Estado, Nivel]).
 
-%% Regla 13: Entry Point (Query Principal).
-%% Wrapper diseñado para ejecutar las simulaciones requeridas en el test.
 evaluar_cliente(Id) :-
     format('~n======================================================~n'),
     format('>> INICIANDO MOTOR DE INFERENCIA PARA CLIENTE: ~w~n', [Id]),
-    dictamen_final(Id, Resultado),         %% Invoca la estructura piramidal descrita anteriormente.
+    dictamen_final(Id, Resultado),         
     format('>> CONCLUSIÓN DEL EXPERTO: ~w~n', [Resultado]),
     format('======================================================~n').
+
+%% ==========================================
+%% MÓDULO 4: PREVENCIÓN DE LAVADO DE ACTIVOS (AML)
+%% ==========================================
+
+%% Regla AML: Detectar triangulación financiera (Max 3 saltos).
+%% Condición: A -> B -> C -> A. Con montos considerables (> S/10000).
+alerta_aml(Id, 'LAVADO DE ACTIVOS (TRIANGULACION)') :-
+    transferencia(Id, B, Monto1, _), Monto1 > 10000,
+    transferencia(B, C, Monto2, _), Monto2 > 10000,
+    transferencia(C, Id, Monto3, _), Monto3 > 10000,
+    Id \= B, B \= C, C \= Id,
+    !,
+    format('~n[XAI] ALERTA AML: Triangulacion detectada (Ciclo Cerrado 3 saltos).~n'),
+    format('[XAI] TRAZA: ~w -> ~w -> ~w -> ~w.~n', [Id, B, C, Id]).
+
+%% Si no hay alerta, predicado fallback para la UI
+alerta_aml(_, 'SIN RIESGO DE LAVADO').
+
+%% ==========================================
+%% MÓDULO 5: COMPLIANCE SBS E INSOLVENCIA
+%% ==========================================
+
+%% Regla SBS: Insolvencia Técnica.
+%% Si la Deuda Total es mayor a 3 veces el Patrimonio Neto.
+intervencion_sbs(Id, 'RIESGO DE INSOLVENCIA (SBS)') :-
+    patrimonio(Id, Patrimonio),
+    deuda_total(Id, Deuda),
+    Umbral is Patrimonio * 3,
+    Deuda > Umbral,
+    !,
+    get_time(TimeStamp), format_time(atom(TimeStr), '%Y-%m-%d %H:%M:%S', TimeStamp),
+    format('~n[XAI] COMPLIANCE: Insolvencia detectada. Timestamp Audit: ~w~n', [TimeStr]),
+    format('[XAI] TRAZA: Deuda (S/.~w) supera 3x el Patrimonio (S/.~w).~n', [Deuda, Patrimonio]).
+
+%% Fallback
+intervencion_sbs(_, 'SOLVENTE (CUMPLE SBS)').
+
+%% ==========================================
+%% MÓDULO 6: AUDITORÍA DE COBROS INDEBIDOS
+%% ==========================================
+
+%% Regla Auditoría: Tasa Cobrada > Tasa Acordada.
+auditoria_cobros(Id, 'COBRO INDEBIDO DETECTADO') :-
+    tasa_acordada(Id, TAcordada),
+    tasa_cobrada(Id, TCobrada),
+    TCobrada > TAcordada,
+    !,
+    Diferencia is TCobrada - TAcordada,
+    format('~n[XAI] AUDITORIA: Diferencia en contrato detectada.~n'),
+    format('[XAI] TRAZA: Tasa cobrada (~w) es mayor a la acordada (~w). Diferencia: ~w.~n', [TCobrada, TAcordada, Diferencia]).
+
+%% Fallback
+auditoria_cobros(_, 'CONTRATO LIMPIO').
