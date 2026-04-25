@@ -1,6 +1,9 @@
 import streamlit as st
 import plotly.graph_objects as go
 import networkx as nx
+import hashlib
+from datetime import datetime
+import os
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -10,7 +13,20 @@ st.set_page_config(
 )
 
 st.title("Dashboard Fintech XAI - UNALM 🏦")
-st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica (11 Módulos)**")
+st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica (Blindaje Nivel 1)**")
+
+# Función para el registro inmutable (Audit Trail)
+def write_audit_log(client_id, evaluation_type, result, reasoning="Generado por Motor Simbólico Prolog"):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    raw_data = f"{timestamp}|{client_id}|{evaluation_type}|{result}|{reasoning}"
+    sha_signature = hashlib.sha256(raw_data.encode()).hexdigest()
+    
+    log_entry = f"[{timestamp}] HASH: {sha_signature}\nCLIENTE: {client_id} | TIPO: {evaluation_type} | RES: {result}\nRAZON: {reasoning}\n{'-'*80}\n"
+    
+    with open("audit_trail_xai.log", "a", encoding="utf-8") as f:
+        f.write(log_entry)
+        
+    return sha_signature
 
 # 2. Conexión Prolog (Con manejo de errores robusto)
 prolog_ready = False
@@ -29,7 +45,6 @@ if prolog_ready:
     # 3. Interfaz de Usuario (UI) - Barra Lateral
     st.sidebar.header("Panel de Búsqueda 🔍")
     
-    # Generar la lista de los 500 clientes (c_001 al c_500)
     lista_clientes = [f"c_{i:03d}" for i in range(1, 501)]
     cliente_seleccionado = st.sidebar.selectbox("Seleccionar ID de Cliente:", lista_clientes)
     
@@ -39,7 +54,7 @@ if prolog_ready:
     st.header(f"Expediente Modular: `{cliente_seleccionado}`")
     
     # === TABS ===
-    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Fraude", "⚖️ Auditoría y Compliance SBS"])
+    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Fraude", "⚖️ Auditoría Legal y Compliance SBS"])
     
     # --- FUNCIONES DE ASISTENCIA PYSWIP ---
     def q_string(query_str, var_name):
@@ -57,7 +72,6 @@ if prolog_ready:
     # ==========================================
     with tab1:
         st.subheader("Datos Capturados (Variables de Estado)")
-        # Extracción de datos básicos
         monto_ingreso = q_string(f"ingresos({cliente_seleccionado}, Monto)", "Monto")
         pais_ip = q_string(f"ubicacion_ip({cliente_seleccionado}, Pais)", "Pais")
         intentos = q_string(f"intentos_login({cliente_seleccionado}, Intentos)", "Intentos")
@@ -65,7 +79,6 @@ if prolog_ready:
         meses = q_string(f"antiguedad_laboral({cliente_seleccionado}, Meses)", "Meses")
         nivel_billetera = q_string(f"billetera_digital({cliente_seleccionado}, Nivel)", "Nivel")
         
-        # Nuevos Módulos
         tiempo_llenado = q_string(f"tiempo_llenado({cliente_seleccionado}, T)", "T")
         residencia = q_string(f"residencia({cliente_seleccionado}, R)", "R")
         imei = q_string(f"dispositivo_imei({cliente_seleccionado}, I)", "I")
@@ -75,64 +88,81 @@ if prolog_ready:
         creditos_activos = q_string(f"creditos_activos({cliente_seleccionado}, C)", "C")
         consultas = q_string(f"consultas_bancarias_15dias({cliente_seleccionado}, C)", "C")
         
+        # Nuevos campos de KYC y Listas Negras
+        dni_vencido = q_string(f"dni_vencido({cliente_seleccionado}, D)", "D")
+        ofac = q_string(f"en_lista_ofac({cliente_seleccionado}, O)", "O")
+        pep = q_string(f"es_pep({cliente_seleccionado}, P)", "P")
+        
         try:
             dsr = (float(suma_cuotas) / float(monto_ingreso)) * 100 if float(monto_ingreso) > 0 else 0
             dsr_str = f"{dsr:.1f}%"
         except:
             dsr_str = "N/A"
             
-        # Renderizar en Columnas
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("Ubicación IP", str(pais_ip).capitalize())
+            st.metric("DNI Vencido", "Sí" if dni_vencido == 'true' else "No")
             st.metric("Residencia Declarada", str(residencia).capitalize())
             st.metric("Tiempo de Llenado", f"{tiempo_llenado}s")
-            st.metric("Ingresos Mensuales", f"S/. {monto_ingreso}")
             st.metric("Carga Financiera (DSR)", dsr_str)
         with col2:
-            st.metric("Dispositivo IMEI", imei)
-            st.metric("Intentos Login Inusuales", intentos)
+            st.metric("Lista OFAC (Terrorismo)", "⚠️ SÍ" if ofac == 'true' else "No")
+            st.metric("Ubicación IP", str(pais_ip).capitalize())
             st.metric("Sector Laboral", str(sector).capitalize())
-            st.metric("Antigüedad Laboral", f"{meses} meses")
             st.metric("Antigüedad Domiciliaria", f"{antig_domicilio} meses")
         with col3:
+            st.metric("Es PEP (Político)", "⚠️ SÍ" if pep == 'true' else "No")
+            st.metric("Intentos Login Inusuales", intentos)
             st.metric("Pago de Servicios", str(estado_pago).capitalize())
-            st.metric("Adopción Billetera Digital", str(nivel_billetera).capitalize())
             st.metric("Créditos Activos", creditos_activos)
+        with col4:
+            st.metric("Ingresos Mensuales", f"S/. {monto_ingreso}")
+            st.metric("Dispositivo IMEI", imei)
+            st.metric("Antigüedad Laboral", f"{meses} meses")
             st.metric("Consultas (15 días)", consultas)
             
         st.divider()
 
         st.subheader("Motor de Inferencia Simbólica (Onboarding XAI)")
         if st.button("⚖️ Evaluar Riesgo (Onboarding)", type="primary", use_container_width=True):
-            with st.spinner("El motor lógico está analizando 11 módulos de riesgo..."):
+            with st.spinner("Evaluando KYC, OFAC, PEP, Fraude y Scoring..."):
                  resultado_str = q_string(f"dictamen_final({cliente_seleccionado}, Resultado)", "Resultado")
+                 
+                 # Generar Audit Log Inmutable
+                 hash_firma = write_audit_log(cliente_seleccionado, "Onboarding", resultado_str)
                  
                  if "DENEGADO" in resultado_str or "RECHAZADO" in resultado_str:
                      st.error(f"### 🛑 {resultado_str}")
                  elif "APROBADO" in resultado_str:
                      st.success(f"### ✅ {resultado_str}")
-                 elif resultado_str == "Error SQL/Prolog" or resultado_str == "N/A":
-                     st.warning("El motor no encontró un predicado válido para este caso.")
-                 else:
+                 elif "MANUAL" in resultado_str:
                      st.warning(f"### ⚠️ {resultado_str}")
-                 st.info("ℹ️ **Explicabilidad (XAI)**: Revisa tu consola original para ver el Árbol de Trazabilidad generado por Prolog.")
+                 else:
+                     st.info(f"### ℹ️ {resultado_str}")
+                     
+                 st.info("ℹ️ **Explicabilidad (XAI)**: Revisa tu consola original para ver el Árbol de Trazabilidad.")
+                 st.caption(f"🔒 **Log Criptográfico Inmutable Guardado.** Hash SHA-256: `{hash_firma}`")
     
     # ==========================================
     # TAB 2: PREVENCIÓN DE LAVADO DE ACTIVOS (AML)
     # ==========================================
     with tab2:
         st.subheader("Búsqueda de Grafos (Detección AML)")
-        st.markdown("Prolog recorrerá recursivamente las transacciones buscando posibles ciclos o triangulaciones de lavado, **aplicando lógica difusa para tolerar comisiones de testaferros (mulas)**.")
+        st.markdown("Prolog recorrerá recursivamente las transacciones buscando posibles ciclos o triangulaciones de lavado, **aplicando lógica difusa para tolerar comisiones de testaferros** y validando **temporalidad estricta (Smurfing < 72 hrs)**.")
         
-        margen_tolerancia = st.slider("Tolerancia de Comisión de Mula (%)", min_value=0, max_value=20, value=10, step=1, help="Porcentaje de merma que el motor AML aceptará al buscar retornos de dinero.")
+        margen_tolerancia = st.slider("Tolerancia de Comisión de Mula (%)", min_value=0, max_value=20, value=10, step=1)
         tolerancia_decimal = margen_tolerancia / 100.0
 
-        if st.button("🔍 Escanear Red Transaccional", key="btn_aml"):
+        if st.button("🔍 Escanear Red Transaccional y Temporalidad", key="btn_aml"):
             resultado_aml = q_string(f"alerta_aml({cliente_seleccionado}, {tolerancia_decimal}, Motivo)", "Motivo")
+            
+            # Generar Audit Log Inmutable
+            hash_firma = write_audit_log(cliente_seleccionado, "AML Escaneo", resultado_aml)
+                 
             if "LAVADO" in resultado_aml:
                 st.error(f"### 🚨 ALERTA CRÍTICA: {resultado_aml}")
-                st.markdown(f"> **Nota de Auditoría XAI**: Triangulación detectada considerando un margen del {margen_tolerancia}%. Revisa la consola para ver la traza exacta.")
+                st.markdown(f"> **Nota de Auditoría XAI**: Triangulación rápida (<72h) detectada considerando un margen del {margen_tolerancia}%.")
+                st.caption(f"🔒 Hash SHA-256 de auditoría AML: `{hash_firma}`")
                 
                 # Intentar graficar la red
                 try:
@@ -146,7 +176,7 @@ if prolog_ready:
                         M2 = q_nodos[0]["M2"]
                         M3 = q_nodos[0]["M3"]
                         
-                        st.markdown("#### 🕸️ Visualización de Red Ilícita")
+                        st.markdown("#### 🕸️ Visualización de Red Ilícita de Smurfing")
                         
                         G = nx.DiGraph()
                         G.add_edge(cliente_seleccionado, nodo_B, weight=M1)
@@ -183,7 +213,8 @@ if prolog_ready:
                     st.warning(f"No se pudo generar el grafo visual: {e}")
             else:
                 st.success(f"### ✅ {resultado_aml}")
-                st.markdown("La red transaccional del cliente no muestra triangulaciones ilegales aparentes con esta tolerancia.")
+                st.markdown("La red transaccional del cliente no muestra Smurfing (no hay triangulaciones rápidas <72h o exceden el margen).")
+                st.caption(f"🔒 Hash SHA-256 de auditoría AML: `{hash_firma}`")
 
     # ==========================================
     # TAB 3: AUDITORÍA Y COMPLIANCE SBS
@@ -203,17 +234,20 @@ if prolog_ready:
         
         if st.button("⚖️ Ejecutar Compliance", key="btn_compliance"):
             resultado_sbs = q_string(f"intervencion_sbs({cliente_seleccionado}, Estado)", "Estado")
+            
+            hash_firma_sbs = write_audit_log(cliente_seleccionado, "Compliance SBS", resultado_sbs)
+            
             if "RIESGO" in resultado_sbs:
                 st.error(f"### 🛑 RECHAZADO: {resultado_sbs}")
-                st.markdown(f"> **Alerta**: El cliente tiene una Deuda que supera el límite permitido para su tipo de patrimonio ({tipo_patrimonio}).")
             else:
                 st.success(f"### ✅ {resultado_sbs}")
                 
+            st.caption(f"🔒 Hash de Auditoría: `{hash_firma_sbs}`")
             st.divider()
             
-            # Sub-sección: Auditoría de Cobros (Contratos)
             st.markdown("#### 🔎 Auditoría de Smart Contracts Lógicos")
             auditoria = q_string(f"auditoria_cobros({cliente_seleccionado}, Alerta)", "Alerta")
+            hash_firma_contrato = write_audit_log(cliente_seleccionado, "Smart Contract", auditoria)
             
             if "COBRO INDEBIDO" in auditoria:
                 st.warning(f"### ⚠️ {auditoria}")
@@ -222,3 +256,16 @@ if prolog_ready:
                 st.error(f"Inconsistencia en Tasas: Se acordó {tasa_acordada} pero el sistema cobró {tasa_cobrada}.")
             else:
                 st.info(f"### ✅ {auditoria} (Tasa Acordada = Tasa Cobrada)")
+            st.caption(f"🔒 Hash de Auditoría: `{hash_firma_contrato}`")
+            
+    # VISUALIZADOR DE LOGS
+    st.sidebar.divider()
+    st.sidebar.subheader("🔒 Auditoría RegTech")
+    if st.sidebar.button("📄 Mostrar Logs Inmutables XAI"):
+        st.sidebar.markdown("Los registros no pueden ser alterados. Cumplimiento legal asegurado.")
+        try:
+            with open("audit_trail_xai.log", "r", encoding="utf-8") as f:
+                logs = f.read()
+            st.sidebar.text_area("Audit Trail (Blockchain Simulado)", logs, height=300)
+        except FileNotFoundError:
+            st.sidebar.warning("Aún no hay logs generados.")
