@@ -1,234 +1,163 @@
 :- include('hechos_base.pl').
 
 %% ============================================================================
-%% MOTOR DE INFERENCIA - SISTEMA EXPERTO ONBOARDING DUAL (IA NEURO-SIMBÓLICA)
-%% Estudiante: IA Arquitecto Senior
-%% Asignatura: Lenguaje de Programación III - UNALM
+%% MOTOR DE INFERENCIA - SISTEMA EXPERTO NEURO-SIMBÓLICO DE NIVEL 2
 %% ============================================================================
-%% Este sistema evalúa clientes "Invisibles Financieros". Utiliza reglas lógicas
-%% para generar un "Credit Scoring" y aplicar "Prevención de Fraude", integrando
-%% un módulo XAI (Explainable AI) para resolver la "Caja Negra" exigida por SBS.
+%% Este sistema lee datos simbólicos y predicciones neuronales generadas por 
+%% Modelos de Machine Learning (Python: Scikit-Learn).
 
 %% ==========================================
-%% MÓDULO 1: PREVENCIÓN DE FRAUDE (SEGURIDAD - 6 FILTROS)
+%% MÓDULO 1: PREVENCIÓN DE FRAUDE (SEGURIDAD LÓGICA Y ANOMALÍAS ML)
 %% ==========================================
 
-%% Regla 1.1: Base de Conocimiento de riesgo geográfico.
 pais_riesgo(rusia).
 pais_riesgo(china).
 
-%% Regla 1.2: Filtro KYC (Identidad).
-es_fraude(Id) :-
-    dni_vencido(Id, true),
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. DNI caducado, KYC fallido.~n', [Id]).
-
-%% Regla 1.3: Filtro Compliance Internacional (OFAC).
-es_fraude(Id) :-
-    en_lista_ofac(Id, true),
-    format('~n[XAI] ALERTA SEGURIDAD CRITICA: Cliente ~w rechazado. Coincidencia en lista OFAC (Terrorismo/Sancionados).~n', [Id]).
-
-%% Regla 1.4: Filtro Antifraude por Ubicación IP (Geolocalización).
-es_fraude(Id) :- 
-    ubicacion_ip(Id, Pais),                
-    pais_riesgo(Pais),                     
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Conexion IP desde pais de altisimo riesgo (~w).~n', [Id, Pais]).
-
-%% Regla 1.5: Filtro Antifraude por Fuerza Bruta.
-es_fraude(Id) :- 
-    intentos_login(Id, Intentos),          
-    Intentos > 3,                          
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Exceso de intentos de login (~w). Posible fuerza bruta.~n', [Id, Intentos]).
-
-%% Regla 1.6: Filtro Anti-Bots (Velocidad de Llenado).
-es_fraude(Id) :-
-    tiempo_llenado(Id, Segundos),
-    Segundos < 10,
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Tiempo de interaccion (~ws) indica que es un BOT.~n', [Id, Segundos]).
-
-%% Regla 1.7: Suplantación IP vs Residencia (Filtro VPN).
-es_fraude(Id) :-
-    ubicacion_ip(Id, IP),
-    residencia(Id, Residencia),
-    IP \= Residencia,
-    justificacion_vpn(Id, false),
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. IP de conexion (~w) no coincide con pais de residencia (~w) y no hay justificacion VPN.~n', [Id, IP, Residencia]).
-
-%% Regla 1.8: Lista Negra de Dispositivos (IMEI).
-es_fraude(Id) :-
-    dispositivo_imei(Id, Imei),
-    imei_en_lista_negra(Imei),
-    format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. Dispositivo IMEI (~w) figura en Lista Negra de OSIPTEL.~n', [Id, Imei]).
+es_fraude(Id) :- dni_vencido(Id, true), format('~n[XAI] ALERTA SEGURIDAD: Cliente ~w rechazado. DNI caducado.~n', [Id]).
+es_fraude(Id) :- en_lista_ofac(Id, true), format('~n[XAI] ALERTA SEGURIDAD CRITICA: Cliente ~w rechazado. Coincidencia en lista OFAC.~n', [Id]).
+es_fraude(Id) :- ubicacion_ip(Id, Pais), pais_riesgo(Pais), format('~n[XAI] ALERTA SEGURIDAD: Pais de alto riesgo (~w).~n', [Pais]).
+es_fraude(Id) :- intentos_login(Id, Intentos), Intentos > 3, format('~n[XAI] ALERTA SEGURIDAD: Fuerza bruta.~n').
+es_fraude(Id) :- tiempo_llenado(Id, S), S < 10, format('~n[XAI] ALERTA SEGURIDAD: BOT Detectado.~n').
+es_fraude(Id) :- ubicacion_ip(Id, IP), residencia(Id, Res), IP \= Res, justificacion_vpn(Id, false), format('~n[XAI] ALERTA SEGURIDAD: VPN no justificada.~n').
+es_fraude(Id) :- dispositivo_imei(Id, Imei), imei_en_lista_negra(Imei), format('~n[XAI] ALERTA SEGURIDAD: IMEI en lista negra.~n').
 
 %% ==========================================
-%% MÓDULO 2: EVALUACIÓN DE SCORING CREDITICIO (EMBUDO FINAL)
+%% MÓDULO 2: EVALUACIÓN DE SCORING CREDITICIO (NEURO-SIMBÓLICA)
 %% ==========================================
 
-%% Regla 2.1: DSR (Carga Financiera). Limite 35%.
 carga_financiera(Id, Porcentaje) :-
-    ingresos(Id, Ingreso),
-    Ingreso > 0,
+    ingresos(Id, Ingreso), Ingreso > 0,
     suma_cuotas_mensuales(Id, TotalCuotas),
     Porcentaje is (TotalCuotas / Ingreso) * 100.
 
+%% REGLA NEURO-SIMBÓLICA: CLUSTERING ML (K-Means)
+%% Se ajusta el límite de DSR basándose en el Perfil Predictivo.
 riesgo_alto_credito(Id) :-
-    carga_financiera(Id, Carga),
-    Carga > 35,
-    format('~n[XAI] RECHAZO SCORING: Cliente ~w con Carga Financiera (DSR) del ~2f%. Sobreendeudamiento critico.~n', [Id, Carga]).
+    carga_financiera(Id, Carga), ml_perfil_cluster(Id, joven_riesgoso), Carga > 25,
+    format('~n[XAI] RECHAZO NEURO-SIMBOLICO: Cluster ML "Joven Riesgoso" supera DSR ajustado al 25%.~n').
 
-%% Regla 2.2: Filtro de Ruleteo.
 riesgo_alto_credito(Id) :-
-    creditos_activos(Id, Cantidad),
-    Cantidad > 3,
-    format('~n[XAI] RECHAZO SCORING: Cliente ~w tiene demasiadas lineas de credito activas (~w). Riesgo de ruleteo.~n', [Id, Cantidad]).
+    carga_financiera(Id, Carga), ml_perfil_cluster(Id, emprendedor_promedio), Carga > 35,
+    format('~n[XAI] RECHAZO NEURO-SIMBOLICO: Cluster ML "Emprendedor Promedio" supera DSR del 35%.~n').
 
-%% Regla 2.3: Huella de Desesperacion.
 riesgo_alto_credito(Id) :-
-    consultas_bancarias_15dias(Id, Consultas),
-    Consultas > 5,
-    format('~n[XAI] RECHAZO SCORING: Cliente ~w con Huella de Desesperacion (~w consultas en 15 dias). Multiples rechazos previos probables.~n', [Id, Consultas]).
+    carga_financiera(Id, Carga), ml_perfil_cluster(Id, familia_estable), Carga > 40,
+    format('~n[XAI] RECHAZO NEURO-SIMBOLICO: Cluster ML "Familia Estable" supera DSR extendido al 40%.~n').
 
-%% Regla 2.4: Historial Deficiente Clasico.
+%% REGLA NEURO-SIMBÓLICA: SCORE PREDICTIVO ML (Regresión Logística)
 riesgo_alto_credito(Id) :-
-    pago_servicios(Id, moroso),
-    format('~n[XAI] RECHAZO SCORING: El motor logico detecto comportamiento activo MOROSO en pagos de servicios.~n').
+    ml_probabilidad_default(Id, Prob), Prob > 0.85,
+    ProbPerc is Prob * 100,
+    format('~n[XAI] RECHAZO NEURO-SIMBOLICO: Machine Learning predice ~2f% de probabilidad de quiebra.~n', [ProbPerc]).
 
-%% --- FACTORES POSITIVOS (Para Aprobacion Premium o Estandar) ---
+%% Lógicas clásicas
+riesgo_alto_credito(Id) :- creditos_activos(Id, C), C > 3, format('~n[XAI] RECHAZO SCORING: Ruleteo detectado.~n').
+riesgo_alto_credito(Id) :- consultas_bancarias_15dias(Id, C), C > 5, format('~n[XAI] RECHAZO SCORING: Huella de desesperacion.~n').
+riesgo_alto_credito(Id) :- pago_servicios(Id, moroso), format('~n[XAI] RECHAZO SCORING: Morosidad historica.~n').
 
-capacidad_solida(Id) :-
-    ingresos(Id, Monto), Monto > 2000,
-    antiguedad_laboral(Id, Meses), Meses > 12.
-
-historial_impecable(Id) :-
-    pago_servicios(Id, puntual).
-
-estabilidad_alta(Id) :-
-    antiguedad_domicilio(Id, Meses), Meses > 24,
-    sector_laboral(Id, Sector), (Sector = tecnologia ; Sector = salud ; Sector = educacion).
-
-respaldo_digital_fuerte(Id) :-
-    billetera_digital(Id, alto).
+capacidad_solida(Id) :- ingresos(Id, M), M > 2000, antiguedad_laboral(Id, Mes), Mes > 12.
+historial_impecable(Id) :- pago_servicios(Id, puntual).
+estabilidad_alta(Id) :- antiguedad_domicilio(Id, M), M > 24, sector_laboral(Id, S), (S = tecnologia ; S = salud ; S = educacion).
+respaldo_digital_fuerte(Id) :- billetera_digital(Id, alto).
 
 %% ==========================================
-%% MÓDULO 3: DECISIÓN FINAL Y XAI (EXPLICABILIDAD)
+%% MÓDULO 3: DICTAMEN FINAL NEURO-SIMBÓLICO
 %% ==========================================
 
-dictamen_final(Id, 'DENEGADO POR SEGURIDAD (FRAUDE DETECTADO)') :-
+dictamen_final(Id, 'DENEGADO POR SEGURIDAD (FRAUDE LÓGICO DETECTADO)') :-
     es_fraude(Id),
-    !, format('[XAI] DICTAMEN FINAL: Onboarding Cancelado para ~w por Riesgo Critico de Fraude.~n', [Id]).
+    !, format('[XAI] DICTAMEN FINAL: Onboarding Cancelado por seguridad estricta.~n').
+
+%% REGLA NEURO-SIMBÓLICA: ANOMALÍAS ML (Isolation Forest)
+dictamen_final(Id, 'REQUIERE VALIDACION BIOMETRICA FACIAL (ANOMALIA ML DETECTADA)') :-
+    ml_fraude_anomalia(Id, true),
+    !, format('[XAI] DICTAMEN FINAL: El modelo Isolation Forest detecto comportamiento invisible no catalogable. Obligar Biometria Liveness.~n').
 
 dictamen_final(Id, 'REQUIERE EVALUACION MANUAL (ALERTA PEP)') :-
     es_pep(Id, true),
-    !, format('[XAI] DICTAMEN FINAL: Cliente ~w es Persona Politicamente Expuesta (PEP). Requiere validacion de Alta Gerencia.~n', [Id]).
+    !, format('[XAI] DICTAMEN FINAL: Persona Politicamente Expuesta.~n').
 
 dictamen_final(Id, 'DENEGADO POR RIESGO CREDITICIO') :-
     riesgo_alto_credito(Id),
-    !, format('[XAI] DICTAMEN FINAL: Onboarding Rechazado para ~w por incumplir politicas de Riesgo Crediticio SBS/Internas.~n', [Id]).
+    !, format('[XAI] DICTAMEN FINAL: Onboarding Rechazado (Combina reglas SBS y Predicciones de Machine Learning).~n').
 
 dictamen_final(Id, 'APROBADO PREMIUM') :-
-    capacidad_solida(Id),
-    historial_impecable(Id),
-    estabilidad_alta(Id),
-    !, format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso para ~w (Nivel Premium).~n', [Id]),
-    format('[XAI] RAZONAMIENTO: Alta solvencia, arraigo domiciliario >24m, sector estable y DSR saludable.~n').
+    capacidad_solida(Id), historial_impecable(Id), estabilidad_alta(Id),
+    !, format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso (Premium).~n').
 
-dictamen_final(Id, 'APROBADO ESTANDAR (FALLBACK NEURO-SIMBÓLICO)') :-
-    ingresos(Id, Monto), Monto >= 800,
-    historial_impecable(Id),
-    respaldo_digital_fuerte(Id),
-    !, format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso para ~w (Nivel Estandar).~n', [Id]),
-    format('[XAI] RAZONAMIENTO: Ingreso modesto de S/.~w mitigado por pago puntual, buena huella digital y ausencia de señales de fraude o ruleteo.~n', [Monto]).
+dictamen_final(Id, 'APROBADO ESTANDAR') :-
+    ingresos(Id, M), M >= 800, historial_impecable(Id), respaldo_digital_fuerte(Id),
+    !, format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso (Estandar).~n').
 
 dictamen_final(Id, 'REQUIERE EVALUACION MANUAL') :-
-    ingresos(Id, Monto),
-    pago_servicios(Id, Estado),
-    format('~n[XAI] DICTAMEN FINAL: Cliente ~w derivado para Evaluacion Manual por Incertidumbre.~n', [Id]),
-    format('[XAI] RAZONAMIENTO: Variables difusas que no permiten asignacion automatica ni rechazo directo.~n').
+    format('~n[XAI] DICTAMEN FINAL: Zonas grises, derivar a analista humano.~n').
 
 evaluar_cliente(Id) :-
     format('~n======================================================~n'),
-    format('>> INICIANDO MOTOR DE INFERENCIA PARA CLIENTE: ~w~n', [Id]),
+    format('>> INICIANDO MOTOR DE INFERENCIA NEURO-SIMBOLICO: ~w~n', [Id]),
     dictamen_final(Id, Resultado),         
-    format('>> CONCLUSIÓN DEL EXPERTO: ~w~n', [Resultado]),
+    format('>> CONCLUSIÓN DEL SISTEMA: ~w~n', [Resultado]),
     format('======================================================~n').
 
 %% ==========================================
-%% MÓDULO 4: PREVENCIÓN DE LAVADO DE ACTIVOS (AML DIFUSO + TEMPORALIDAD)
+%% MÓDULO 4: PREVENCIÓN DE LAVADO DE ACTIVOS (AML + NLP)
 %% ==========================================
 
-%% Regla AML: Detectar triangulación financiera considerando comisiones de mula y VELOCIDAD (Smurfing).
-%% Condición: A -> B -> C -> A. Con montos considerables, margen de tolerancia y dentro de 72 horas (259200 segundos).
+%% REGLA NEURO-SIMBÓLICA: Si el modelo NLP de Python detecta que las palabras en
+%% la transferencia son "Sospechosas" (ej: 'inversion xyz'), Prolog disminuye 
+%% la tolerancia a la mitad para cazar redes de lavado encubiertas.
 
-alerta_aml(Id, ToleranciaDecimal, 'LAVADO DE ACTIVOS (SMURFING DETECTADO)') :-
-    transferencia(Id, B, Monto1, Ts1, _), Monto1 > 10000,
-    transferencia(B, C, Monto2, _, _),
-    transferencia(C, Id, Monto3, Ts3, _),
+alerta_aml(Id, ToleranciaBase, 'LAVADO DE ACTIVOS (SMURFING DETECTADO)') :-
+    transferencia(Id, B, Monto1, Ts1, _, _), Monto1 > 10000,
+    transferencia(B, C, Monto2, _, _, _),
+    transferencia(C, Id, Monto3, Ts3, _, _),
     Id \= B, B \= C, C \= Id,
     
-    %% Temporalidad Estricta: La operacion debe cerrarse en menos de 72 horas
     DiferenciaSegundos is Ts3 - Ts1,
     DiferenciaSegundos =< 259200,
     DiferenciaSegundos >= 0,
     
-    %% Logica Difusa: El dinero que regresa no es el 100% por comisiones.
-    RetornoMinimo is Monto1 * (1.0 - ToleranciaDecimal),
+    ( ml_texto_sospechoso(Id, B, true) -> ToleranciaFinal is ToleranciaBase / 2 ; ToleranciaFinal is ToleranciaBase ),
+    
+    RetornoMinimo is Monto1 * (1.0 - ToleranciaFinal),
     Monto3 >= RetornoMinimo,
     Monto3 =< Monto1,
     !,
-    format('~n[XAI] ALERTA AML CRITICA: Triangulacion rapida detectada (Smurfing/U-Turn Laundering).~n'),
-    format('[XAI] TEMPORALIDAD: Ciclo completado en menos de 72 horas (~w segundos).~n', [DiferenciaSegundos]),
-    format('[XAI] TRAZA: Salio ~w a ~w. Luego paso por ~w. Finalmente regreso ~w a ~w.~n', [Monto1, B, C, Monto3, Id]),
-    format('[XAI] PARAMETROS: Dentro del margen de tolerancia del ~2f%.~n', [ToleranciaDecimal * 100]).
+    format('~n[XAI] ALERTA AML CRITICA: Triangulacion rapida detectada (Smurfing).~n'),
+    format('[XAI] COMPONENTE NEURO (NLP): Tolerancia ajustada al ~2f%.~n', [ToleranciaFinal * 100]),
+    format('[XAI] TRAZA: Salio ~w a ~w. Regreso ~w a ~w.~n', [Monto1, B, Monto3, Id]).
 
-%% Fallback
 alerta_aml(_, _, 'SIN RIESGO DE LAVADO').
 
-%% Predicado auxiliar para el Grafo Visual
-traza_aml_nodos(Id, ToleranciaDecimal, B, C, Monto1, Monto2, Monto3) :-
-    transferencia(Id, B, Monto1, Ts1, _), Monto1 > 10000,
-    transferencia(B, C, Monto2, _, _),
-    transferencia(C, Id, Monto3, Ts3, _),
+traza_aml_nodos(Id, ToleranciaBase, B, C, Monto1, Monto2, Monto3) :-
+    transferencia(Id, B, Monto1, Ts1, _, _), Monto1 > 10000,
+    transferencia(B, C, Monto2, _, _, _),
+    transferencia(C, Id, Monto3, Ts3, _, _),
     Id \= B, B \= C, C \= Id,
     DiferenciaSegundos is Ts3 - Ts1,
     DiferenciaSegundos =< 259200,
     DiferenciaSegundos >= 0,
-    RetornoMinimo is Monto1 * (1.0 - ToleranciaDecimal),
+    ( ml_texto_sospechoso(Id, B, true) -> ToleranciaFinal is ToleranciaBase / 2 ; ToleranciaFinal is ToleranciaBase ),
+    RetornoMinimo is Monto1 * (1.0 - ToleranciaFinal),
     Monto3 >= RetornoMinimo,
     Monto3 =< Monto1,
     !.
 
 %% ==========================================
-%% MÓDULO 5: COMPLIANCE SBS E INSOLVENCIA DIFERENCIADA
+%% MÓDULO 5 Y 6: COMPLIANCE E INDECOPI (ESTÁTICO)
 %% ==========================================
 
-intervencion_sbs(Id, 'RIESGO DE INSOLVENCIA (SBS - ACTIVO LIQUIDO)') :-
-    tipo_patrimonio(Id, liquido),
-    patrimonio(Id, Patrimonio),
-    deuda_total(Id, Deuda),
-    Umbral is Patrimonio * 5,
-    Deuda > Umbral,
-    !, format('~n[XAI] COMPLIANCE: Insolvencia por liquidez (>5x).~n').
+intervencion_sbs(Id, 'RIESGO DE INSOLVENCIA (ACTIVO LIQUIDO)') :-
+    tipo_patrimonio(Id, liquido), patrimonio(Id, P), deuda_total(Id, D),
+    Umbral is P * 5, D > Umbral, !.
 
-intervencion_sbs(Id, 'RIESGO DE INSOLVENCIA (SBS - ACTIVO INMOBILIARIO)') :-
-    tipo_patrimonio(Id, inmobiliario),
-    patrimonio(Id, Patrimonio),
-    deuda_total(Id, Deuda),
-    Umbral is Patrimonio * 3,
-    Deuda > Umbral,
-    !, format('~n[XAI] COMPLIANCE: Insolvencia por riesgo inmobiliario (>3x).~n').
+intervencion_sbs(Id, 'RIESGO DE INSOLVENCIA (ACTIVO INMOBILIARIO)') :-
+    tipo_patrimonio(Id, inmobiliario), patrimonio(Id, P), deuda_total(Id, D),
+    Umbral is P * 3, D > Umbral, !.
 
-intervencion_sbs(_, 'SOLVENTE (CUMPLE POLITICAS DE RIESGO)').
-
-%% ==========================================
-%% MÓDULO 6: AUDITORÍA DE COBROS INDEBIDOS
-%% ==========================================
+intervencion_sbs(_, 'SOLVENTE (CUMPLE POLITICAS)').
 
 auditoria_cobros(Id, 'COBRO INDEBIDO DETECTADO') :-
-    tasa_acordada(Id, TAcordada),
-    tasa_cobrada(Id, TCobrada),
-    TCobrada > TAcordada,
-    !,
-    Diferencia is TCobrada - TAcordada,
-    format('~n[XAI] AUDITORIA: Diferencia en contrato detectada.~n'),
-    format('[XAI] TRAZA: Tasa cobrada (~w) es mayor a la acordada (~w). Diferencia: ~w.~n', [TCobrada, TAcordada, Diferencia]).
+    tasa_acordada(Id, TA), tasa_cobrada(Id, TC), TC > TA, !.
 
 auditoria_cobros(_, 'CONTRATO LIMPIO').

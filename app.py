@@ -122,6 +122,24 @@ if prolog_ready:
             st.metric("Consultas (15 días)", consultas)
             
         st.divider()
+        st.subheader("Componente Neuro (Machine Learning)")
+        st.markdown("Modelos de IA entrenados en Python inyectan hechos estadísticos en Prolog para dictar umbrales dinámicos.")
+        
+        ml_prob = q_string(f"ml_probabilidad_default({cliente_seleccionado}, P)", "P")
+        ml_anom = q_string(f"ml_fraude_anomalia({cliente_seleccionado}, A)", "A")
+        ml_clus = q_string(f"ml_perfil_cluster({cliente_seleccionado}, C)", "C")
+        
+        try:
+            prob_perc = f"{float(ml_prob)*100:.1f}%"
+        except:
+            prob_perc = "N/A"
+            
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Score Predictivo Default (Regresión Logística)", prob_perc)
+        c2.metric("Comportamiento Anómalo (Isolation Forest)", "⚠️ DETECTADO" if ml_anom == 'true' else "Normal")
+        c3.metric("Clustering Demográfico (K-Means)", str(ml_clus).replace('_', ' ').title())
+
+        st.divider()
 
         st.subheader("Motor de Inferencia Simbólica (Onboarding XAI)")
         if st.button("⚖️ Evaluar Riesgo (Onboarding)", type="primary", use_container_width=True):
