@@ -1,5 +1,5 @@
+:- dynamic ingresos/2, intentos_login/2, antiguedad_laboral/2, billetera_digital/2, pago_servicios/2, ml_probabilidad_default/2, ubicacion_ip/2, dni_vencido/2, en_lista_ofac/2, es_pep/2.
 :- include('hechos_base.pl').
-
 %% ============================================================================
 %% MOTOR DE INFERENCIA - SISTEMA EXPERTO NEURO-SIMBÓLICO DE NIVEL 2
 %% ============================================================================
