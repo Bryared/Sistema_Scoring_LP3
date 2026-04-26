@@ -68,9 +68,10 @@ class OptimizadorCarteraAG:
                 # El retorno neto de este cliente
                 retorno_esperado += (ganancia_interes - riesgo_perdida)
                 
-        # RESTRICCIÓN DEL BANCO: Si nos pasamos de presupuesto, matamos a este individuo con una nota terrible
+        # RESTRICCIÓN DEL BANCO: Penalidad proporcional si nos pasamos del presupuesto
         if inversion_total > self.presupuesto_maximo:
-            return -1000000.0, 
+            exceso = inversion_total - self.presupuesto_maximo
+            return retorno_esperado - (exceso * 2.0), 
             
         # Retornamos la ganancia neta. El algoritmo siempre intentará maximizar esto.
         return retorno_esperado,

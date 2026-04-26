@@ -18,63 +18,11 @@ st.title("Dashboard Fintech XAI - UNALM 🏦")
 st.markdown("Sistema Experto de Onboarding Dual y Compliance mediante **IA Neuro-Simbólica (Blindaje Nivel 1)**")
 
 # Inject Custom CSS for Dark Blue and Lime Green Theme
-st.markdown("""
-<style>
-/* Background Colors */
-.stApp {
-    background-color: #1A2639 !important;
-    color: #FFFFFF !important;
-}
-[data-testid="stSidebar"] {
-    background-color: #101826 !important;
-}
-/* Text Elements */
-p, label, .stMarkdown {
-    color: #FFFFFF !important;
-}
-/* Headers (Green) */
-h1, h2, h3, h4, h5, h6 {
-    color: #05C46B !important;
-}
-/* Metric Container */
-[data-testid="stMetricValue"] {
-    color: #FFFFFF !important; /* Neutral white for values to avoid confusion */
-}
-[data-testid="stMetricLabel"] {
-    color: #A0B0C0 !important;
-}
-/* Buttons */
-.stButton>button {
-    background-color: #05C46B !important;
-    color: #FFFFFF !important;
-    font-weight: bold !important;
-    border: none !important;
-    border-radius: 5px !important;
-}
-.stButton>button:hover {
-    background-color: #04A359 !important;
-    color: #FFFFFF !important;
-}
-/* Tabs */
-.stTabs [data-baseweb="tab"] {
-    color: #FFFFFF !important;
-}
-.stTabs [aria-selected="true"] {
-    color: #05C46B !important;
-    border-bottom-color: #05C46B !important;
-}
-/* Info/Success/Error/Warning Boxes */
-.stAlert {
-    background-color: #1E2D44 !important;
-    color: #FFFFFF !important;
-    border: 1px solid #05C46B !important;
-}
-/* DataFrame background */
-[data-testid="stDataFrame"] {
-    background-color: #1E2D44 !important;
-}
-</style>
-""", unsafe_allow_html=True)
+try:
+    with open("style.css", "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except Exception:
+    pass
 
 # Función para el registro inmutable (Audit Trail)
 def write_audit_log(client_id, evaluation_type, result, reasoning="Generado por Motor Simbólico Prolog"):
@@ -90,12 +38,16 @@ def write_audit_log(client_id, evaluation_type, result, reasoning="Generado por 
     return sha_signature
 
 # 2. Conexión Prolog (Con manejo de errores robusto)
+@st.cache_resource
+def get_prolog_engine():
+    from pyswip import Prolog
+    p = Prolog()
+    p.consult("motor_inferencia.pl")
+    return p
+
 prolog_ready = False
 try:
-    from pyswip import Prolog
-    prolog = Prolog()
-    # Cargar el archivo con el motor de inferencia
-    prolog.consult("motor_inferencia.pl")
+    prolog = get_prolog_engine()
     prolog_ready = True
 except ImportError:
     st.error("Librería PySwip no encontrada. Ejecuta `pip install pyswip`.")
@@ -415,11 +367,21 @@ if prolog_ready:
         st.markdown("Busca la mejor combinación de clientes para maximizar la rentabilidad del banco usando el 'Problema de la Mochila'.")
         
         presupuesto = st.number_input("Presupuesto Máximo del Banco (S/.)", min_value=100000, value=1000000, step=100000)
+        modo_opt = st.radio("Población a Optimizar:", 
+                            ["Optimizar Solo Pre-Aprobados (Filtro Neuro-Simbólico)", 
+                             "Optimizar Todo (Ignorar reglas lógicas)"])
         
         if st.button("Ejecutar Evolución Genética"):
             with st.spinner("Creando generaciones y cruzando genes..."):
                 data_ag = []
-                for cid in st.session_state.lista_clientes[:500]: # Optimizar los primeros 500
+                # Iteramos sobre TODOS los clientes en la sesión
+                for cid in st.session_state.lista_clientes:
+                    # Aplicar filtro SÓLO si está seleccionado el enfoque Neuro-Simbólico
+                    if modo_opt == "Optimizar Solo Pre-Aprobados (Filtro Neuro-Simbólico)":
+                        dictamen = q_string(f"dictamen_final({cid}, Resultado)", "Resultado")
+                        if "APROBADO" not in str(dictamen):
+                            continue
+                        
                     try:
                         ingreso_str = q_string(f"ingresos({cid}, I)", "I")
                         prestamo_solicitado = float(ingreso_str) * 3 if ingreso_str != "N/A" else 5000.0
