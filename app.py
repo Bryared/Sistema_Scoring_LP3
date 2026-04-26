@@ -4,6 +4,9 @@ import networkx as nx
 import hashlib
 from datetime import datetime
 import os
+import pandas as pd
+from modelo_neuronal import CalculadorScoringNeuronal
+from algoritmo_genetico import OptimizadorCarteraAG
 
 # 1. Configuración de la página
 st.set_page_config(
@@ -45,8 +48,12 @@ if prolog_ready:
     # 3. Interfaz de Usuario (UI) - Barra Lateral
     st.sidebar.header("Panel de Búsqueda 🔍")
     
-    lista_clientes = [f"c_{i:03d}" for i in range(1, 501)]
-    cliente_seleccionado = st.sidebar.selectbox("Seleccionar ID de Cliente:", lista_clientes)
+    if "lista_clientes" not in st.session_state:
+        st.session_state.lista_clientes = [f"c_{i:03d}" for i in range(1, 501)]
+    if "modelo_neuronal" not in st.session_state:
+        st.session_state.modelo_neuronal = CalculadorScoringNeuronal()
+    
+    cliente_seleccionado = st.sidebar.selectbox("Seleccionar ID de Cliente:", st.session_state.lista_clientes)
     
     st.sidebar.divider()
     st.sidebar.info("Este dashboard extrae métricas usando **Pyswip** y evalúa automáticamente en base a reglas del conocimiento lógico para explicar la rentabilidad/riesgo, auditorías y compliance.")
@@ -54,7 +61,7 @@ if prolog_ready:
     st.header(f"Expediente Modular: `{cliente_seleccionado}`")
     
     # === TABS ===
-    tab1, tab2, tab3 = st.tabs(["📊 Onboarding (Scoring)", "🛡️ AML & Fraude", "⚖️ Auditoría Legal y Compliance SBS"])
+    tab_add, tab1, tab2, tab3, tab4 = st.tabs(["➕ Nuevo Cliente", "📊 Onboarding (Scoring)", "🛡️ AML & Fraude", "⚖️ Auditoría Legal y Compliance SBS", "🧠 IA (Redes & Genéticos)"])
     
     # --- FUNCIONES DE ASISTENCIA PYSWIP ---
     def q_string(query_str, var_name):
@@ -66,6 +73,51 @@ if prolog_ready:
             return str(val)
         except Exception:
             return "Error SQL/Prolog"
+
+    # ==========================================
+    # TAB ADD: NUEVO CLIENTE
+    # ==========================================
+    with tab_add:
+        st.subheader("Registrar Nuevo Cliente (Base de Hechos)")
+        with st.form("form_nuevo_cliente"):
+            nc_id = st.text_input("ID Cliente (ej. c_501)", value=f"c_{len(st.session_state.lista_clientes)+1:03d}")
+            c1, c2 = st.columns(2)
+            nc_ingresos = c1.number_input("Ingresos", min_value=0, value=2500)
+            nc_intentos = c2.number_input("Intentos Login", min_value=0, value=1)
+            nc_antiguedad = c1.number_input("Antigüedad Laboral (meses)", min_value=0, value=12)
+            nc_billetera = c2.selectbox("Nivel Billetera", ["nulo", "bajo", "medio", "alto"], index=2)
+            nc_pagos = c1.selectbox("Pago Servicios", ["puntual", "atrasado", "moroso"], index=0)
+            nc_dsr = c2.number_input("Carga Financiera DSR (Suma cuotas / Ingresos)", min_value=0.0, value=0.3)
+            
+            submit_btn = st.form_submit_button("Agregar Cliente y Calcular ML")
+            
+            if submit_btn:
+                # 1. Calcular probabilidad de default con Red Neuronal
+                billetera_val = {"nulo":0, "bajo":0.3, "medio":0.6, "alto":1.0}[nc_billetera]
+                prob_def = st.session_state.modelo_neuronal.predecir_probabilidad_default(nc_ingresos, nc_intentos, nc_antiguedad, nc_dsr, billetera_val)
+                
+                # 2. Agregar a la lista
+                if nc_id not in st.session_state.lista_clientes:
+                    st.session_state.lista_clientes.append(nc_id)
+                
+                # 3. Assert facts in Prolog
+                try:
+                    list(prolog.query(f"assertz(ingresos({nc_id}, {nc_ingresos}))"))
+                    list(prolog.query(f"assertz(intentos_login({nc_id}, {nc_intentos}))"))
+                    list(prolog.query(f"assertz(antiguedad_laboral({nc_id}, {nc_antiguedad}))"))
+                    list(prolog.query(f"assertz(billetera_digital({nc_id}, '{nc_billetera}'))"))
+                    list(prolog.query(f"assertz(pago_servicios({nc_id}, '{nc_pagos}'))"))
+                    list(prolog.query(f"assertz(ml_probabilidad_default({nc_id}, {prob_def}))"))
+                    # Hechos por defecto para evitar errores en otras reglas
+                    list(prolog.query(f"assertz(ubicacion_ip({nc_id}, peru))"))
+                    list(prolog.query(f"assertz(dni_vencido({nc_id}, false))"))
+                    list(prolog.query(f"assertz(en_lista_ofac({nc_id}, false))"))
+                    list(prolog.query(f"assertz(es_pep({nc_id}, false))"))
+                    
+                    st.success(f"Cliente {nc_id} agregado con éxito. Prob. Default (ML): {prob_def:.2%}")
+                    st.rerun() # Refresh the selectbox
+                except Exception as e:
+                    st.error(f"Error Prolog: {e}")
 
     # ==========================================
     # TAB 1: ONBOARDING Y CREDIT SCORING
@@ -275,6 +327,65 @@ if prolog_ready:
             else:
                 st.info(f"### ✅ {auditoria} (Tasa Acordada = Tasa Cobrada)")
             st.caption(f"🔒 Hash de Auditoría: `{hash_firma_contrato}`")
+            
+    # ==========================================
+    # TAB 4: INTELIGENCIA ARTIFICIAL (ML & AG)
+    # ==========================================
+    with tab4:
+        st.header("Modelos Predictivos y de Optimización")
+        
+        st.subheader("1. Red Neuronal Multicapa (Scoring)")
+        st.markdown("Entrena un modelo Perceptrón Multicapa (MLP) utilizando `scikit-learn` para predecir probabilidades de impago basadas en ingresos, intentos de login, antigüedad y carga financiera.")
+        if st.button("Entrenar/Actualizar Red Neuronal"):
+            with st.spinner("Entrenando MLPClassifier..."):
+                acc = st.session_state.modelo_neuronal.entrenar_modelo_simulado(1500)
+                st.success(f"Modelo entrenado exitosamente con Accuracy: {acc:.2%}")
+        
+        st.divider()
+        st.subheader("2. Algoritmo Genético (Optimización de Cartera)")
+        st.markdown("Busca la combinación óptima de préstamos dados los clientes, maximizando la ganancia (por intereses) y minimizando el riesgo (probabilidad de default de la red neuronal), sujeto a un presupuesto finito.")
+        
+        presupuesto = st.number_input("Presupuesto del Banco (S/.)", min_value=100000, value=1000000, step=100000)
+        
+        if st.button("Ejecutar Optimización Genética"):
+            with st.spinner("Evolucionando generaciones... (DEAP)"):
+                # Generar data basada en clientes actuales
+                data_ag = []
+                for cid in st.session_state.lista_clientes[:500]: # Optimizar solo los 500 primeros para velocidad
+                    try:
+                        # Extraer ingresos y simular prestamo = 3x ingresos
+                        ingreso_str = q_string(f"ingresos({cid}, I)", "I")
+                        prestamo_solicitado = float(ingreso_str) * 3 if ingreso_str != "N/A" else 5000.0
+                    except:
+                        prestamo_solicitado = 5000.0
+                        
+                    try:
+                        prob_str = q_string(f"ml_probabilidad_default({cid}, P)", "P")
+                        prob_def = float(prob_str) if prob_str != "N/A" else 0.15
+                    except:
+                        prob_def = 0.15
+                        
+                    tasa = 0.20 # 20% interes anual simulado
+                    data_ag.append({
+                        'id': cid,
+                        'prestamo': prestamo_solicitado,
+                        'prob_default': prob_def,
+                        'tasa_interes': tasa
+                    })
+                
+                opt = OptimizadorCarteraAG(data_ag, presupuesto_maximo=presupuesto)
+                seleccionados, inv_total, ret_total = opt.optimizar(tam_poblacion=100, generaciones=50)
+                
+                st.success(f"Optimización completada. Se seleccionaron {len(seleccionados)} clientes.")
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Clientes Aprobados", len(seleccionados))
+                c2.metric("Inversión Total", f"S/. {inv_total:,.2f}")
+                c3.metric("Retorno Esperado Neto", f"S/. {ret_total:,.2f}")
+                
+                if seleccionados:
+                    df_res = pd.DataFrame([{'Cliente': c['id'], 'Préstamo Asignado': c['prestamo'], 'Riesgo (Prob Default)': round(c['prob_default'], 3)} for c in seleccionados])
+                    st.dataframe(df_res)
+                    st.caption("Mostrando la cartera de clientes óptima seleccionada por el Algoritmo Evolutivo.")
             
     # VISUALIZADOR DE LOGS
     st.sidebar.divider()
