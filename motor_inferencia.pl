@@ -161,3 +161,41 @@ auditoria_cobros(Id, 'COBRO INDEBIDO DETECTADO') :-
     tasa_acordada(Id, TA), tasa_cobrada(Id, TC), TC > TA, !.
 
 auditoria_cobros(_, 'CONTRATO LIMPIO').
+
+%% ==========================================
+%% MÓDULO 7: SCORING NUMÉRICO
+%% ==========================================
+
+puntos_ingresos(Id, 100) :- ingresos(Id, M), M > 2000, !.
+puntos_ingresos(Id, 50) :- ingresos(Id, M), M > 800, !.
+puntos_ingresos(_, 0).
+
+puntos_historial(Id, 150) :- pago_servicios(Id, puntual), !.
+puntos_historial(Id, -200) :- pago_servicios(Id, moroso), !.
+puntos_historial(_, 0).
+
+puntos_billetera(Id, 50) :- billetera_digital(Id, alto), !.
+puntos_billetera(_, 0).
+
+puntos_estabilidad(Id, 100) :- antiguedad_domicilio(Id, M), M > 24, !.
+puntos_estabilidad(_, 0).
+
+puntos_riesgo(Id, -100) :- creditos_activos(Id, C), C > 3, !.
+puntos_riesgo(Id, -50) :- consultas_bancarias_15dias(Id, C), C > 5, !.
+puntos_riesgo(_, 0).
+
+puntos_ml(Id, PtsNegativos) :- 
+    ml_probabilidad_default(Id, Prob),
+    PtsNegativos is round(Prob * -200), !.
+puntos_ml(_, 0).
+
+calcular_score(Id, ScoreFinal) :-
+    puntos_ingresos(Id, PI),
+    puntos_historial(Id, PH),
+    puntos_billetera(Id, PB),
+    puntos_estabilidad(Id, PE),
+    puntos_riesgo(Id, PR),
+    puntos_ml(Id, PML),
+    Suma is 500 + PI + PH + PB + PE + PR + PML,
+    (Suma > 1000 -> Score = 1000 ; Score = Suma),
+    (Score < 0 -> ScoreFinal = 0 ; ScoreFinal = Score).
