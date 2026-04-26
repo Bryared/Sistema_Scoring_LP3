@@ -90,7 +90,7 @@ dictamen_final(Id, 'APROBADO ESTANDAR') :-
     !, format('~n[XAI] DICTAMEN FINAL: Onboarding Exitoso (Estandar).~n').
 
 dictamen_final(Id, 'REQUIERE EVALUACION MANUAL') :-
-    format('~n[XAI] DICTAMEN FINAL: Zonas grises, derivar a analista humano.~n').
+    format('~n[XAI] DICTAMEN FINAL: Zonas grises, derivar a analista humano para ~w.~n', [Id]).
 
 evaluar_cliente(Id) :-
     format('~n======================================================~n'),
@@ -109,7 +109,7 @@ evaluar_cliente(Id) :-
 
 alerta_aml(Id, ToleranciaBase, 'LAVADO DE ACTIVOS (SMURFING DETECTADO)') :-
     transferencia(Id, B, Monto1, Ts1, _, _), Monto1 > 10000,
-    transferencia(B, C, Monto2, _, _, _),
+    transferencia(B, C, _, _, _, _),
     transferencia(C, Id, Monto3, Ts3, _, _),
     Id \= B, B \= C, C \= Id,
     
