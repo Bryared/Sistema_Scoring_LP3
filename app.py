@@ -22,52 +22,56 @@ st.markdown("""
 <style>
 /* Background Colors */
 .stApp {
-    background-color: #0A1128 !important;
+    background-color: #1A2639 !important;
     color: #FFFFFF !important;
 }
 [data-testid="stSidebar"] {
-    background-color: #060B19 !important;
+    background-color: #101826 !important;
 }
 /* Text Elements */
-h1, h2, h3, h4, h5, h6, p, label, .stMarkdown {
+p, label, .stMarkdown {
     color: #FFFFFF !important;
+}
+/* Headers (Green) */
+h1, h2, h3, h4, h5, h6 {
+    color: #05C46B !important;
 }
 /* Metric Container */
 [data-testid="stMetricValue"] {
-    color: #39FF14 !important;
+    color: #FFFFFF !important; /* Neutral white for values to avoid confusion */
 }
 [data-testid="stMetricLabel"] {
     color: #A0B0C0 !important;
 }
 /* Buttons */
 .stButton>button {
-    background-color: #39FF14 !important;
-    color: #0A1128 !important;
+    background-color: #05C46B !important;
+    color: #FFFFFF !important;
     font-weight: bold !important;
     border: none !important;
     border-radius: 5px !important;
 }
 .stButton>button:hover {
-    background-color: #32E012 !important;
-    color: #0A1128 !important;
+    background-color: #04A359 !important;
+    color: #FFFFFF !important;
 }
 /* Tabs */
 .stTabs [data-baseweb="tab"] {
     color: #FFFFFF !important;
 }
 .stTabs [aria-selected="true"] {
-    color: #39FF14 !important;
-    border-bottom-color: #39FF14 !important;
+    color: #05C46B !important;
+    border-bottom-color: #05C46B !important;
 }
 /* Info/Success/Error/Warning Boxes */
 .stAlert {
-    background-color: #111A3A !important;
+    background-color: #1E2D44 !important;
     color: #FFFFFF !important;
-    border: 1px solid #39FF14 !important;
+    border: 1px solid #05C46B !important;
 }
 /* DataFrame background */
 [data-testid="stDataFrame"] {
-    background-color: #111A3A !important;
+    background-color: #1E2D44 !important;
 }
 </style>
 """, unsafe_allow_html=True)
