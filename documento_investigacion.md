@@ -5,8 +5,7 @@
 
 
 
-## 5. Conclusiones para Medio Curso
-Esta integración demuestra de manera didáctica el poder de los algoritmos de Inteligencia Artificial (Redes y Genéticos) actuando como proveedores de "datos probabilísticos", y Prolog actuando como el juez que toma la decisión final basada en reglas y emite una justificación transparente. Es un ejemplo perfecto de sistemas híbridos para la banca moderna.
+
 ## 1. Título del sistema experto
 **Sistema Experto de Onboarding Dual para Fintech mediante IA Neuro-Simbólica.**
 
@@ -102,19 +101,46 @@ La lógica del sistema sigue una prioridad clara:
 
 Esta estructura permite una toma de decisiones ordenada, explicable y alineada con un entorno Fintech real.
 
-## 4. Motor de inferencia
-El motor de inferencia está implementado en Prolog y utiliza encadenamiento hacia atrás. 
-Para activar el sistema, la consulta a utilizar es:
+## 4. Módulos del Motor de Inferencia (Prolog)
+El motor principal del sistema está desarrollado en Prolog porque su naturaleza simbólica es perfecta para aplicar reglas de negocio exactas y leyes inquebrantables, algo que el Machine Learning puro no puede garantizar (ya que la IA comete errores probabilísticos). A continuación se detalla cada módulo:
 
-```prolog
-?- evaluar_cliente(c_001).
-```
+### 4.1 Módulo de Fraude y Seguridad (Hard Rules)
+- **¿Para qué sirve?** Actúa como la primera barrera de defensa del banco, bloqueando inmediatamente a cualquier cliente que represente un peligro legal o informático.
+- **¿Cómo funciona?** Evalúa variables críticas. Si un cliente tiene el DNI vencido, se conecta desde una IP riesgosa con VPN, o su IMEI está en una lista negra, el sistema detiene cualquier evaluación adicional.
+- **Implementación:** Se codificó usando reglas rígidas (`es_fraude/1`) que, de cumplirse, activan el operador *cut* (`!`) en la regla `dictamen_final/2`, cancelando el onboarding al instante.
 
-A partir de esa consulta, Prolog ejecuta la regla `dictamen_final/2`, que revisa primero fraude, luego anomalías ML, luego PEP, después riesgo crediticio y finalmente reglas de aprobación.
+### 4.2 Módulo de Riesgo Crediticio y Scoring
+- **¿Para qué sirve?** Determinar si el cliente tiene la capacidad económica real para pagar una deuda.
+- **¿Cómo funciona?** Calcula la "Carga Financiera" sumando todas las cuotas que debe el cliente y dividiéndolas entre su salario. Si la carga supera los límites, o si tiene morosidad histórica o exceso de "ruleteo", es rechazado.
+- **Implementación:** Integra la regla `riesgo_alto_credito/1`. Aquí se cruza la información matemática (ingresos vs cuotas) con el límite dinámico dictado por los clústeres de IA (ej. si el ML detectó que es un "Joven Riesgoso", la regla de Prolog se vuelve más estricta).
 
-Para mejorar la eficiencia y evitar respuestas contradictorias, se hace uso del operador cut (`!`) que impide que Prolog siga evaluando reglas innecesarias después de encontrar una decisión válida.
+### 4.3 Módulo de Aprobación (Onboarding)
+- **¿Para qué sirve?** Otorgar el veredicto final a los clientes que lograron sobrevivir a los filtros de fraude y riesgo.
+- **¿Cómo funciona?** Categoriza a los clientes sanos en dos niveles: *Aprobado Premium* (para clientes con mucha estabilidad laboral y de domicilio) y *Aprobado Estándar* (para clientes regulares pero con pagos puntuales y fuerte uso de billetera digital).
+- **Implementación:** Reglas lógicas positivas que verifican simultáneamente múltiples hechos: `capacidad_solida/1`, `historial_impecable/1` y `respaldo_digital_fuerte/1`. Si el cliente no cumple todas, Prolog lo deriva inteligentemente a "Evaluación Manual".
 
-## 5. Sesión de prueba
+### 4.4 Módulos Especiales: AML (Lavado de Activos) y Compliance SBS
+- **¿Para qué sirve?** Asegurar que el banco cumpla con las leyes internacionales contra el blanqueo de capitales y regulaciones nacionales (Indecopi/SBS).
+- **¿Cómo funciona?** Busca triangulaciones financieras (Smurfing) y audita mediante contratos inteligentes lógicos que el banco no cobre una tasa de interés mayor a la firmada.
+- **Implementación:** El módulo AML usa reglas de encadenamiento (`triangulacion_sospechosa/3`) para seguir el rastro del dinero entre cuentas. El Compliance contrasta hechos directos (`tasa_acordada` vs `tasa_cobrada`).
+
+## 5. Módulos de Inteligencia Artificial (Python)
+Para complementar las reglas lógicas de Prolog (que son rígidas y basadas en leyes), el sistema cuenta con módulos de Inteligencia Artificial en Python que aportan flexibilidad, predicción y optimización estadística.
+
+**¿Debieron hacerse en Prolog?**
+No. Fue una decisión arquitectónica correcta implementarlos en Python. Prolog es excelente para lógica discreta (verdadero/falso, leyes y reglas), pero es ineficiente para el cálculo matricial continuo, entrenamiento de pesos neuronales o simulaciones evolutivas masivas. Las arquitecturas Neuro-Simbólicas modernas exigen separar el "Cerebro Estadístico" (Python) del "Juez Lógico" (Prolog).
+
+### 5.1 Red Neuronal Multicapa (`modelo_neuronal.py`)
+- **¿Para qué sirve?** Estimar el riesgo estadístico futuro de cada cliente.
+- **¿Cómo funciona?** Recibe datos clave del cliente (como sus ingresos, antigüedad laboral, carga financiera y nivel de uso de tecnología). A través de un modelo matemático, calcula la "Probabilidad de Default" (el riesgo de que el cliente no devuelva el préstamo).
+- **Implementación:** Este cálculo estadístico se inyecta directamente como un hecho en Prolog (`ml_probabilidad_default/2`). De esta forma, el sistema Neuro-Simbólico une lo mejor de dos mundos: Prolog pone las leyes y la IA aporta la intuición estadística.
+
+### 5.2 Algoritmo Genético (`algoritmo_genetico.py`)
+- **¿Para qué sirve?** Optimizar la cartera de préstamos para maximizar la rentabilidad del banco bajo un presupuesto limitado.
+- **¿Cómo funciona?** Está basado en la teoría de la evolución de Darwin. Si el banco tiene un límite de dinero para prestar, no puede aprobar a todos. El algoritmo genera miles de combinaciones posibles de clientes ("cromosomas") y las hace cruzar y mutar. Las combinaciones que generan más ganancias sin exceder el presupuesto sobreviven a lo largo de las generaciones.
+- **Implementación:** Utiliza la librería `DEAP`. El algoritmo lee a los clientes que ya fueron **aprobados por Prolog** y evalúa matemáticamente su rentabilidad (Interés a ganar vs. Riesgo de pérdida por default). Si un cliente aprobado resulta ser poco rentable, la evolución genética lo descarta inteligentemente.
+
+## 6. Sesión de prueba
 A continuación, se muestran cinco consultas de prueba con su respuesta esperada por parte del sistema.
 
 **Caso 1: Denegado por fraude**
@@ -168,14 +194,14 @@ A continuación, se muestran cinco consultas de prueba con su respuesta esperada
   ```
 - **Interpretación:** el sistema no encuentra una señal suficientemente fuerte para aprobar o rechazar de forma automática.
 
-## 6. Reflexión personal
+## 7. Reflexión personal
 El principal reto fue modelar de forma correcta el conocimiento del problema en Prolog, es decir, traducir situaciones reales (fraude, riesgo crediticio, aprobación) en hechos y reglas lógicas coherentes. En un principio el sistema no presentaba con exactitud los criterios de decisión, por lo que se realizó un ajuste en las reglas para que representen correctamente cada caso.
 
 También fue clave entender cómo el motor de inferencia procesa las consultas para tomar decisiones, permitiendo que el sistema no solo dé un resultado, sino que lo justifique. El resultado final fue un sistema experto que evalúa perfiles de clientes de manera lógica, estructurada y transparente.
 
-## 7. Conclusión
+## 8. Conclusión
 El sistema experto que se desarrolló demuestra la capacidad de Prolog para la construcción de un motor de inferencia sólido, basado en reglas y decisiones que se justifican con los hechos.
 
 El sistema emplea lógica simbólica para evaluar clientes de forma sistemática, priorizando seguridad, análisis de riesgo y aprobación. No solo se genera una respuesta, sino que el motor de inferencia justifica el razonamiento de cada decisión, un factor fundamental en el ámbito financiero. En consecuencia, queda evidenciado la utilidad de los sistemas expertos como una herramienta que puede ser transparente, consistente y útil para la toma de decisiones automatizada.
-## 8. Conclusiones para Medio Curso
+## 9. Conclusiones para Medio Curso
 Esta integración demuestra de manera didáctica el poder de los algoritmos de Inteligencia Artificial (Redes y Genéticos) actuando como proveedores de "datos probabilísticos", y Prolog actuando como el juez que toma la decisión final basada en reglas y emite una justificación transparente. Es un ejemplo perfecto de sistemas híbridos para la banca moderna.
