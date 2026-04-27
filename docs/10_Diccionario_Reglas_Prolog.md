@@ -35,12 +35,14 @@ Evalúan si el cliente tiene capacidad de pago. Usa `riesgo_alto_credito/1`.
 Dictaminan el resultado final usando el predicado `dictamen_final/2` apoyado por sub-reglas auxiliares.
 
 **Sub-reglas Auxiliares (4 reglas):**
+
 16. **Capacidad Sólida:** Requiere ganar más de S/.2000 y llevar más de 12 meses en su empleo actual.
 17. **Historial Impecable:** Requiere que sus pagos anteriores sean siempre puntuales.
 18. **Estabilidad Alta:** Requiere vivir más de 24 meses en la misma casa y trabajar en tecnología, salud o educación.
 19. **Respaldo Digital:** Requiere un uso intensivo (alto) de billeteras digitales.
 
 **Reglas de Decisión Final - El Juez (7 reglas):**
+
 20. **Fraude (Cut):** Si `es_fraude` es verdadero, el dictamen es "DENEGADO POR SEGURIDAD". Detiene la ejecución gracias al operador `!`.
 21. **Anomalía ML:** Si el algoritmo Isolation Forest detecta comportamiento invisible, el dictamen exige "VALIDACION BIOMETRICA FACIAL".
 22. **Alerta PEP:** Si es una Persona Políticamente Expuesta, se deriva a "EVALUACION MANUAL".
